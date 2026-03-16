@@ -4,9 +4,8 @@ import { Lead } from '@/types/lead';
 
 export const revalidate = 30;
 
-interface PageProps {
-  searchParams: Promise<{ priority?: string; source?: string; status?: string }>;
-}
+type ResolvedParams = { priority?: string; source?: string; status?: string };
+interface PageProps { searchParams: Promise<ResolvedParams>; }
 
 function PriorityBadge({ priority }: { priority: string }) {
   const cfg = priorityConfig[priority as keyof typeof priorityConfig];
@@ -29,7 +28,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function FilterBar({ current }: { current: PageProps['searchParams'] }) {
+function FilterBar({ current }: { current: ResolvedParams }) {
   const priorities = ['', 'HIGH', 'MEDIUM', 'LOW'];
   const sources    = ['', 'web_form', 'telegram', 'whatsapp', 'email', 'crm'];
 
@@ -64,10 +63,7 @@ function FilterBar({ current }: { current: PageProps['searchParams'] }) {
               ? 'bg-blue-600 text-white border-blue-600'
               : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
           }`}>
-          {s
-            ? (sourceConfig[s as keyof typeof sourceConfig]?.icon + ' ' + sourceConfig[s as keyof typeof sourceConfig]?.label)
-            : 'All'
-          }
+          {s ? (sourceConfig[s as keyof typeof sourceConfig]?.icon + ' ' + sourceConfig[s as keyof typeof sourceConfig]?.label) : 'All'}
         </a>
       ))}
     </div>
@@ -75,12 +71,9 @@ function FilterBar({ current }: { current: PageProps['searchParams'] }) {
 }
 
 export default async function LeadsPage({ searchParams }: PageProps) {
-  const resolvedParams = await searchParams;
+  const p = await searchParams;
   const { leads, total } = await getLeads({
-    priority: resolvedParams.priority,
-    source:   resolvedParams.source,
-    status:   resolvedParams.status,
-    limit: 50,
+    priority: p.priority, source: p.source, status: p.status, limit: 50,
   }).catch(() => ({ leads: [], total: 0 }));
 
   return (
@@ -89,23 +82,17 @@ export default async function LeadsPage({ searchParams }: PageProps) {
         <h1 className="text-2xl font-bold text-gray-900">All Leads</h1>
         <p className="text-sm text-gray-500 mt-1">{total} total leads</p>
       </div>
-
-      <FilterBar current={searchParams} />
-
+      <FilterBar current={p} />
       <div className="bg-white rounded-xl border border-gray-200">
         {leads.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">
-            No leads match these filters.
-          </div>
+          <div className="text-center py-16 text-gray-400 text-sm">No leads match these filters.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100">
                   {['Contact', 'Message', 'AI Analysis', 'Priority', 'Status', 'Source', 'Time', ''].map(h => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase tracking-wide">
-                      {h}
-                    </th>
+                    <th key={h} className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -133,10 +120,7 @@ export default async function LeadsPage({ searchParams }: PageProps) {
                       <td className="py-3 px-4 text-sm text-gray-600">{src?.icon} {src?.label}</td>
                       <td className="py-3 px-4 text-xs text-gray-400">{timeAgo(lead.created_at)}</td>
                       <td className="py-3 px-4">
-                        <a href={`/leads/${lead.id}`}
-                          className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
-                          View →
-                        </a>
+                        <a href={`/leads/${lead.id}`} className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">View →</a>
                       </td>
                     </tr>
                   );
