@@ -5,7 +5,7 @@ import { Lead } from '@/types/lead';
 export const revalidate = 30;
 
 interface PageProps {
-  searchParams: { priority?: string; source?: string; status?: string };
+  searchParams: Promise<{ priority?: string; source?: string; status?: string }>;
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
@@ -75,10 +75,11 @@ function FilterBar({ current }: { current: PageProps['searchParams'] }) {
 }
 
 export default async function LeadsPage({ searchParams }: PageProps) {
+  const resolvedParams = await searchParams;
   const { leads, total } = await getLeads({
-    priority: searchParams.priority,
-    source:   searchParams.source,
-    status:   searchParams.status,
+    priority: resolvedParams.priority,
+    source:   resolvedParams.source,
+    status:   resolvedParams.status,
     limit: 50,
   }).catch(() => ({ leads: [], total: 0 }));
 
