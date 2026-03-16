@@ -1,0 +1,172 @@
+{
+  "name": "AI Lead Intelligence Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "Entry point — receives leads from web forms, Telegram, WhatsApp etc."
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a lead qualification expert. Analyze the lead message and return ONLY valid JSON with this shape: {\"intent\":\"BUY|RENT|INQUIRE|CONSULT|OTHER\",\"budget\":\"string or null\",\"location\":\"string or null\",\"timeline\":\"string or null\",\"priority\":\"HIGH|MEDIUM|LOW\",\"confidence\":0.0-1.0,\"ai_summary\":\"max 120 chars, actionable for sales team\"}. Priority: HIGH = clear budget+timeline+intent. MEDIUM = some details. LOW = vague/browsing."
+            },
+            {
+              "role": "user",
+              "content": "=Lead message: \"{{ $json.message }}\""
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "response_format": { "type": "json_object" }
+        }
+      },
+      "id": "ai-node",
+      "name": "AI Lead Scorer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "openAiApi": { "name": "OpenAI API" }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "name": "name",       "value": "={{ $('Lead Webhook').item.json.name }}",    "type": "string" },
+            { "name": "email",      "value": "={{ $('Lead Webhook').item.json.email }}",   "type": "string" },
+            { "name": "phone",      "value": "={{ $('Lead Webhook').item.json.phone }}",   "type": "string" },
+            { "name": "message",    "value": "={{ $('Lead Webhook').item.json.message }}", "type": "string" },
+            { "name": "source",     "value": "={{ $('Lead Webhook').item.json.source }}",  "type": "string" },
+            { "name": "intent",     "value": "={{ JSON.parse($json.message).intent }}",    "type": "string" },
+            { "name": "budget",     "value": "={{ JSON.parse($json.message).budget }}",    "type": "string" },
+            { "name": "location",   "value": "={{ JSON.parse($json.message).location }}",  "type": "string" },
+            { "name": "timeline",   "value": "={{ JSON.parse($json.message).timeline }}",  "type": "string" },
+            { "name": "priority",   "value": "={{ JSON.parse($json.message).priority }}",  "type": "string" },
+            { "name": "confidence", "value": "={{ JSON.parse($json.message).confidence }}", "type": "number" },
+            { "name": "ai_summary", "value": "={{ JSON.parse($json.message).ai_summary }}", "type": "string" }
+          ]
+        }
+      },
+      "id": "set-node",
+      "name": "Map Lead Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BACKEND_URL }}/api/webhook/lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type",     "value": "application/json" },
+            { "name": "x-webhook-secret", "value": "={{ $env.WEBHOOK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "name",       "value": "={{ $json.name }}" },
+            { "name": "email",      "value": "={{ $json.email }}" },
+            { "name": "phone",      "value": "={{ $json.phone }}" },
+            { "name": "message",    "value": "={{ $json.message }}" },
+            { "name": "source",     "value": "={{ $json.source }}" },
+            { "name": "intent",     "value": "={{ $json.intent }}" },
+            { "name": "budget",     "value": "={{ $json.budget }}" },
+            { "name": "location",   "value": "={{ $json.location }}" },
+            { "name": "timeline",   "value": "={{ $json.timeline }}" },
+            { "name": "priority",   "value": "={{ $json.priority }}" },
+            { "name": "confidence", "value": "={{ $json.confidence }}" },
+            { "name": "ai_summary", "value": "={{ $json.ai_summary }}" }
+          ]
+        }
+      },
+      "id": "save-node",
+      "name": "Save to Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "leftValue":  "={{ $json.priority }}",
+              "rightValue": "HIGH",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "if-node",
+      "name": "High Priority?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=🔴 *HIGH PRIORITY LEAD*\n\n👤 *Name:* {{ $json.name || 'Unknown' }}\n📧 *Email:* {{ $json.email || '—' }}\n🌍 *Source:* {{ $json.source }}\n\n💬 *Message:*\n{{ $json.message }}\n\n🤖 *AI Analysis:*\n• Intent: {{ $json.intent || '—' }}\n• Budget: {{ $json.budget || '—' }}\n• Location: {{ $json.location || '—' }}\n• Timeline: {{ $json.timeline || '—' }}\n\n📝 {{ $json.ai_summary }}",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "telegram-node",
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1340, 200],
+      "credentials": {
+        "telegramApi": { "name": "Telegram Bot" }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, priority: $('Map Lead Fields').item.json.priority }) }}"
+      },
+      "id": "response-node",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 400]
+    }
+  ],
+  "connections": {
+    "Lead Webhook":    { "main": [[{ "node": "AI Lead Scorer",    "type": "main", "index": 0 }]] },
+    "AI Lead Scorer":  { "main": [[{ "node": "Map Lead Fields",   "type": "main", "index": 0 }]] },
+    "Map Lead Fields": { "main": [[{ "node": "Save to Database",  "type": "main", "index": 0 }]] },
+    "Save to Database":{ "main": [[{ "node": "High Priority?",    "type": "main", "index": 0 }]] },
+    "High Priority?":  {
+      "main": [
+        [{ "node": "Telegram Alert",       "type": "main", "index": 0 }],
+        [{ "node": "Respond to Webhook",   "type": "main", "index": 0 }]
+      ]
+    },
+    "Telegram Alert":  { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Captures leads from any source, scores them with GPT-4o-mini, saves to Supabase, and alerts the sales team on Telegram for high-priority leads."
+  }
+}
