@@ -30,11 +30,15 @@ function StatusBadge({ status }: { status: string }) {
 
 function FilterBar({ current }: { current: ResolvedParams }) {
   const priorities = ['', 'HIGH', 'MEDIUM', 'LOW'];
-  const sources    = ['', 'web_form', 'telegram', 'whatsapp', 'email', 'crm'];
+  const sources = ['', 'web_form', 'telegram', 'whatsapp', 'email', 'crm'];
 
   function buildUrl(overrides: Record<string, string>) {
     const params = new URLSearchParams();
-    const merged = { ...current, ...overrides };
+    const merged: Record<string, string> = {};
+    if (current.priority) merged.priority = current.priority;
+    if (current.source) merged.source = current.source;
+    if (current.status) merged.status = current.status;
+    Object.assign(merged, overrides);
     for (const [k, v] of Object.entries(merged)) {
       if (v) params.set(k, v);
     }
@@ -103,15 +107,15 @@ export default async function LeadsPage({ searchParams }: PageProps) {
                     <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4">
                         <div className="font-medium text-sm text-gray-900">{lead.name || 'Unknown'}</div>
-                        <div className="text-xs text-gray-400">{lead.email || '—'}</div>
+                        <div className="text-xs text-gray-400">{lead.email || '---'}</div>
                       </td>
                       <td className="py-3 px-4 max-w-xs">
                         <div className="text-sm text-gray-600 line-clamp-2">{lead.message}</div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="text-xs space-y-0.5">
-                          {lead.intent   && <div><span className="text-gray-400">Intent:</span> <span className="font-medium text-gray-700">{lead.intent}</span></div>}
-                          {lead.budget   && <div><span className="text-gray-400">Budget:</span> <span className="font-medium text-gray-700">{lead.budget}</span></div>}
+                          {lead.intent && <div><span className="text-gray-400">Intent:</span> <span className="font-medium text-gray-700">{lead.intent}</span></div>}
+                          {lead.budget && <div><span className="text-gray-400">Budget:</span> <span className="font-medium text-gray-700">{lead.budget}</span></div>}
                           {lead.location && <div><span className="text-gray-400">Location:</span> <span className="font-medium text-gray-700">{lead.location}</span></div>}
                         </div>
                       </td>
@@ -120,7 +124,7 @@ export default async function LeadsPage({ searchParams }: PageProps) {
                       <td className="py-3 px-4 text-sm text-gray-600">{src?.icon} {src?.label}</td>
                       <td className="py-3 px-4 text-xs text-gray-400">{timeAgo(lead.created_at)}</td>
                       <td className="py-3 px-4">
-                        <a href={`/leads/${lead.id}`} className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">View →</a>
+                        <a href={`/leads/${lead.id}`} className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">View</a>
                       </td>
                     </tr>
                   );
