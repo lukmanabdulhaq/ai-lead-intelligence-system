@@ -2,6 +2,16 @@
 
 > **Automated lead capture, AI scoring, and instant sales notifications — built for real startup workflows.**
 
+## Demo Video
+
+[![AI Lead Intelligence System — Full Pipeline Demo](https://img.youtube.com/vi/Zdd9DEbvXfI/maxresdefault.jpg)](https://youtu.be/Zdd9DEbvXfI)
+
+> Click to watch: Lead arrives → AI scores it → Dashboard updates → Telegram notification fires — all in under 3 seconds.
+
+## Live Dashboard
+
+🌐 **[ai-lead-intelligence-system.vercel.app](https://ai-lead-intelligence-system.vercel.app)**
+
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org)
 [![Node.js](https://img.shields.io/badge/Node.js-20-green?logo=node.js)](https://nodejs.org)
 [![n8n](https://img.shields.io/badge/n8n-automation-orange?logo=n8n)](https://n8n.io)
